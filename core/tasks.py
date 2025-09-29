@@ -11,11 +11,29 @@ def get_weather(*args):
     for city in args:
         url = f"https://api.weatherapi.com/v1/current.json?key={api_key}&q={city}"
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)  # Add timeout
+
             if response.status_code == 200:
-                result.append(response.json())
+                weather_data = response.json()
+                result.append(weather_data)
+            else:
+                # Handle HTTP errors (404, 401, etc.)
+                result.append({
+                    'city': city,
+                    'error': f'HTTP {response.status_code}: {response.text}'
+                })
 
         except requests.RequestException as e:
-            return {"error": str(e)}
+            # Handle network/connection errors for this specific city
+            result.append({
+                'city': city,
+                'error': f'Request failed: {str(e)}'
+            })
+        except Exception as e:
+            # Handle any other unexpected errors
+            result.append({
+                'city': city,
+                'error': f'Unexpected error: {str(e)}'
+            })
 
     return result
