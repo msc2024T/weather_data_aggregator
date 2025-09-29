@@ -33,8 +33,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',  # Django REST Framework
-    'core',  # Add the core app
+    'rest_framework',
+    'core',
+    "drf_yasg"
 
 ]
 

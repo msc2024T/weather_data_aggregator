@@ -5,10 +5,15 @@ from django.utils import timezone
 from .serializers import WeatherRequestSerializer, CityListSerializer
 from .models import WeatherRequest, WeatherData
 from .tasks import get_weather
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 
 class RequestWeatherView(APIView):
-
+    @swagger_auto_schema(
+        request_body=CityListSerializer,
+        responses={201: "Weather request created"}
+    )
     def post(self, request):
 
         serializer = CityListSerializer(data=request.data)
@@ -30,8 +35,8 @@ class RequestWeatherView(APIView):
         )
 
         try:
-
-            task_result = get_weather.delay(*cities)
+            # Pass request_id as first argument to the task
+            task_result = get_weather.delay(weather_request.id, *cities)
 
             return Response({
                 'message': 'Weather request submitted successfully',
@@ -64,10 +69,25 @@ class RequestWeatherView(APIView):
 
 
 class WeatherRequestDetailView(APIView):
-
+    @swagger_auto_schema(
+        operation_description="Get detailed weather request with all weather data",
+        responses={
+            200: WeatherRequestSerializer,
+            404: openapi.Response(
+                description="Weather request not found",
+                examples={
+                    "application/json": {
+                        "error": "Weather request not found"
+                    }
+                }
+            )
+        }
+    )
     def get(self, request, request_id):
         try:
-            weather_request = WeatherRequest.objects.get(id=request_id)
+
+            weather_request = WeatherRequest.objects.prefetch_related(
+                'data').get(id=request_id)
             serializer = WeatherRequestSerializer(weather_request)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -79,14 +99,18 @@ class WeatherRequestDetailView(APIView):
 
 
 class WeatherRequestListView(APIView):
-
+    @swagger_auto_schema(
+        operation_description="List all weather requests for the current user (filtered by IP)",
+        responses={200: WeatherRequestSerializer(many=True)}
+    )
     def get(self, request):
-
+        # Get client IP address
         ip = RequestWeatherView.get_client_ip(request)
 
+        # Filter requests by client IP and prefetch related data
         queryset = WeatherRequest.objects.filter(
             requester_ip=ip
-        ).order_by('-created_at')
+        ).prefetch_related('data').order_by('-created_at')
 
         serializer = WeatherRequestSerializer(queryset, many=True)
         return Response({

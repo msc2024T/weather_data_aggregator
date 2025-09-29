@@ -5,14 +5,18 @@ from .models import WeatherRequest, WeatherData
 class WeatherDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = WeatherData
-        fields = '__all__'
+        fields = ['id', 'city', 'temperature',
+                  'wind_kph', 'humidity', 'last_updated']
 
 
 class WeatherRequestSerializer(serializers.ModelSerializer):
+    data = WeatherDataSerializer(many=True, read_only=True)
 
     class Meta:
         model = WeatherRequest
-        fields = '__all__'
+        fields = ['id', 'requester_ip', 'status', 'city_count',
+                  'created_at', 'updated_at', 'data']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class CityListSerializer(serializers.Serializer):
